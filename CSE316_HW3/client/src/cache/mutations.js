@@ -30,8 +30,8 @@ export const LOGOUT = gql`
 `;
 
 export const ADD_ITEM = gql`
-	mutation AddItem($item: ItemInput!, $_id: String!) {
-		addItem(item: $item, _id: $_id)
+	mutation AddItem($item: ItemInput!, $_id: String!, $index: Int!) {
+		addItem(item: $item, _id: $_id, index: $index)
 	}
 `;
 
@@ -89,5 +89,36 @@ export const DELETE_TODOLIST = gql`
 export const UPDATE_TODOLIST_FIELD = gql`
 	mutation UpdateTodolistField($_id: String!, $field: String!, $value: String!) {
 		updateTodolistField(_id: $_id, field: $field, value: $value)
+	}
+`;
+
+export const SET_LIST_TO_TOP = gql`
+	mutation setListToTop($_id: String!) {
+		setListToTop(_id: $_id)
+	}
+`;
+
+export const SORT_ITEMS = gql`
+	mutation SortItems($_id: String!, $field: String!){
+		sortItems(_id: $_id, field: $field) {
+			_id
+			id
+			description
+			due_date
+			assigned_to
+			completed
+		}
+	}
+`;
+
+export const UPDATE_COLLECTION = gql`
+	mutation UpdateCollection($newList: [ItemInput], $_id: String!) {
+		updateCollection(newList: $newList, _id: $_id)
+	}
+`;
+
+export const REVERT_COLLECTION = gql`
+	mutation RevertCollection($oldList: [ItemInput], $listID: String!) {
+		revertCollection(oldList: $oldList, listID: $listID)
 	}
 `;

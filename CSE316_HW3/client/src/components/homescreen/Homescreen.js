@@ -14,8 +14,12 @@ import { WLayout, WLHeader, WLMain, WLSide } from 'wt-frontend';
 import { UpdateListField_Transaction, 
 	UpdateListItems_Transaction, 
 	ReorderItems_Transaction, 
-	EditItem_Transaction } 				from '../../utils/jsTPS';
+	EditItem_Transaction,
+	SortItemsByField_Transaction,
+	AlterCollection_Transaction
+	} 				from '../../utils/jsTPS';
 import WInput from 'wt-frontend/build/components/winput/WInput';
+import { waitFor } from '@testing-library/dom';
 
 
 const Homescreen = (props) => {
@@ -33,7 +37,10 @@ const Homescreen = (props) => {
 	const [DeleteTodoItem] 			= useMutation(mutations.DELETE_ITEM);
 	const [AddTodolist] 			= useMutation(mutations.ADD_TODOLIST);
 	const [AddTodoItem] 			= useMutation(mutations.ADD_ITEM);
-
+	const [SortItems]				= useMutation(mutations.SORT_ITEMS);
+	const [UpdateCollection]		= useMutation(mutations.UPDATE_COLLECTION);
+	const[RevertCollection]			= useMutation(mutations.REVERT_COLLECTION);
+	// const [MoveListToTop] 			= useMutation(mutations.SET_LIST_TO_TOP);
 
 	const { loading, error, data, refetch } = useQuery(GET_DB_TODOS);
 	if(loading) { console.log(loading, 'loading'); }
@@ -58,6 +65,8 @@ const Homescreen = (props) => {
 		console.log("UNDOING");
 		const retVal = await props.tps.undoTransaction();
 		refetchTodos(refetch);
+		setActiveList(activeList);
+		console.log(activeList.items);
 		return retVal;
 	}
 
@@ -81,7 +90,7 @@ const Homescreen = (props) => {
 			id: lastID,
 			description: 'No Description',
 			due_date: 'No Date',
-			assigned_to: props.user._id,
+			assigned_to: 'Not Assigned',
 			completed: false
 		};
 		let opcode = 1;
@@ -93,7 +102,7 @@ const Homescreen = (props) => {
 	};
 
 
-	const deleteItem = async (item) => {
+	const deleteItem = async (item, index) => { 
 		let listID = activeList._id;
 		let itemID = item._id;
 		let opcode = 0;
@@ -105,7 +114,7 @@ const Homescreen = (props) => {
 			assigned_to: item.assigned_to,
 			completed: item.completed
 		}
-		let transaction = new UpdateListItems_Transaction(listID, itemID, itemToDelete, opcode, AddTodoItem, DeleteTodoItem);
+		let transaction = new UpdateListItems_Transaction(listID, itemID, itemToDelete, opcode, AddTodoItem, DeleteTodoItem, index);
 		props.tps.addTransaction(transaction);
 		tpsRedo();
 	};
@@ -114,9 +123,13 @@ const Homescreen = (props) => {
 		let flag = 0;
 		if (field === 'completed') flag = 1;
 		let listID = activeList._id;
-		let transaction = new EditItem_Transaction(listID, itemID, field, prev, value, flag, UpdateTodoItemField);
-		props.tps.addTransaction(transaction);
-		tpsRedo();
+		console.log(value);
+		console.log(prev);
+		if(!(value==prev)){
+			let transaction = new EditItem_Transaction(listID, itemID, field, prev, value, flag, UpdateTodoItemField);
+			props.tps.addTransaction(transaction);
+			tpsRedo();
+		}
 
 	};
 
@@ -139,7 +152,11 @@ const Homescreen = (props) => {
 			items: [],
 		}
 		const { data } = await AddTodolist({ variables: { todolist: list }, refetchQueries: [{ query: GET_DB_TODOS }] });
-		setActiveList(list)
+		await refetchTodos(refetch);
+		if(data) {
+			let _id = data.addTodolist;
+			handleSetActive(_id);
+		} 
 	};
 
 	const deleteList = async (_id) => {
@@ -156,10 +173,41 @@ const Homescreen = (props) => {
 	};
 
 	const handleSetActive = (id) => {
+		//Renders the boolean value for the all lists to be false
+		// todolists.map((list) => (list.isTopList=false));
+
+		// todolists.map((list) => (console.log(list.isTopList)));
+		//Finds the new todolist to be the top one
 		const todo = todolists.find(todo => todo.id === id || todo._id === id);
+		console.log(todolists);
+		console.log(todolists[0]);
+		console.log(todo);
+		console.log("ACTIVE ID " + todo.id);
+
+		const headList = todo;
+		const baseList = todolists.filter(list => list.id!=todolists[0].id);
+
+		console.log("ACTIVE LIST: " + headList);
+		console.log("BASE LIST : " + baseList);
+		baseList.unshift(headList);
+		console.log("NEW LIST: " + baseList);
+		// let index = 0;
+		// for(let i =0; i<todolists.length; i++){
+		// 	if(todolists[i].id===id||todo._id===id)
+		// 		index = i;
+		// }
 		setActiveList(todo);
 	};
 
+	const setListToTop = (id) => {
+
+	}
+
+	const seeNewList = async (list) => {
+		console.log("REACHED");
+		const { data } = await AddTodolist({ variables: { todolist: list }, refetchQueries: [{ query: GET_DB_TODOS }] });
+		setActiveList(list);
+	}
 	
 	/*
 		Since we only have 3 modals, this sort of hardcoding isnt an issue, if there
@@ -184,6 +232,38 @@ const Homescreen = (props) => {
 		toggleShowDelete(!showDelete)
 	}
 
+	const sortItemsByField = async(field) => {
+		const sortingParameter = field;
+		console.log(sortingParameter);
+		const currentList = activeList.items;
+		//await SortItems({variables:{_id: activeList._id, field: 'default'}, refetchQueries: [{query: GET_DB_TODOS}]});
+		// const newList = await SortItems({variables:{_id: activeList._id, field: sortingParameter}, refetchQueries: [{query: GET_DB_TODOS}]});
+		console.log("Adding transaction");
+		console.log(currentList);
+		console.log(sortingParameter);
+		const transaction = new AlterCollection_Transaction(activeList._id, sortingParameter, currentList, SortItems, RevertCollection);
+		props.tps.addTransaction(transaction);
+		tpsRedo(); //FOR NOW
+		refetchTodos(refetch);
+		setActiveList(activeList);
+	}
+
+	//Used for transactions
+	const updateCollection = async(list) => {
+
+		console.log(list);
+		console.log(list.data);
+		console.log(list.data.sortItems);
+		console.log("UPDATING COLLECTION");
+		const result = await UpdateCollection({variables:{newList: [...list.data.sortItems], _id: activeList._id}, refetchQueries:[{query: GET_DB_TODOS}]});
+	}
+
+	const revertCollection = async(oldList) => {
+		const result = await RevertCollection({variables:{oldList:oldList, listID: activeList._id}, refetchQueries:[{query:GET_DB_TODOS}]});
+		refetchTodos(refetch);
+		setActiveList(activeList);
+	}
+
 	return (
 		<WLayout wLayout="header-lside">
 			<WLHeader>
@@ -205,13 +285,13 @@ const Homescreen = (props) => {
 
 			<WLSide side="left">
 				<WSidebar>
-					{
+					{	
 						activeList ?
 							<SidebarContents
 								todolists={todolists} activeid={activeList.id} auth={auth}
 								handleSetActive={handleSetActive} createNewList={createNewList}
 								updateListField={updateListField}
-								undo={tpsUndo} redo={tpsRedo}
+								tps={props.tps}
 							/>
 							:
 							<></>
@@ -227,6 +307,9 @@ const Homescreen = (props) => {
 									editItem={editItem} reorderItem={reorderItem}
 									setShowDelete={setShowDelete}
 									activeList={activeList} setActiveList={setActiveList}
+									tps={props.tps}
+									sortByFieldCallBack={sortItemsByField}
+									undo={tpsUndo} redo={tpsRedo}
 								/>
 							</div>
 						:
@@ -236,7 +319,7 @@ const Homescreen = (props) => {
 			</WLMain>
 
 			{
-				showDelete && (<Delete deleteList={deleteList} activeid={activeList._id} setShowDelete={setShowDelete} />)
+				showDelete && (<Delete deleteList={deleteList} activeid={activeList._id} tps={props.tps} setShowDelete={setShowDelete} />)
 			}
 
 			{

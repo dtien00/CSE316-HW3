@@ -18,10 +18,11 @@ const SidebarEntry = (props) => {
     };
 
     const entryStyle = props.id === props.activeid ? 'list-item list-item-active' : 'list-item ';
+    const textColor = props.textColor=='yellow' ? 'yellow-text' : 'white-text';
     
     return (
         <WNavItem 
-            className={entryStyle} onDoubleClick={handleEditing} 
+            className={entryStyle} className={textColor} onDoubleClick={handleEditing} 
             onClick={() => { props.handleSetActive(props.id) }} hoverAnimation="lighten"
         >
             {

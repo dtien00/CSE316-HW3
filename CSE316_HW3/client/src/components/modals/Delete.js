@@ -7,6 +7,7 @@ const Delete = (props) => {
     const handleDelete = async () => {
         props.deleteList(props.activeid);
         props.setShowDelete(false);
+        props.tps.clearAllTransactions();
     }
 
     return (

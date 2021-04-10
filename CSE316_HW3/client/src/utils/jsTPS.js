@@ -47,6 +47,29 @@ export class ReorderItems_Transaction extends jsTPS_Transaction {
     
 }
 
+// Handles reordering of ALL items in the list based on direction (Up = 1, Down = -1)
+export class SortItemsByField_Transaction extends jsTPS_Transaction {
+    constructor(list_ID, field, callback){
+        super();
+        this.list_ID = list_ID;
+        this.field = field;
+        this.updateFunction = callback;
+        console.log("MADE IT");
+    }
+    
+    async doTransaction() {
+		const { data } = await this.updateFunction({variables: {_id: this.list_ID, field: this.field}});
+		return data;
+    }
+
+    async undoTransaction() {
+		const {data} = await this.updateFunction({variables: {_id: this.list_ID, field: this.field}});
+		return data;
+
+    }
+
+}
+
 export class EditItem_Transaction extends jsTPS_Transaction {
 	constructor(listID, itemID, field, prev, update, flag, callback) {
 		super();
@@ -84,7 +107,7 @@ export class EditItem_Transaction extends jsTPS_Transaction {
 /*  Handles create/delete of list items */
 export class UpdateListItems_Transaction extends jsTPS_Transaction {
     // opcodes: 0 - delete, 1 - add 
-    constructor(listID, itemID, item, opcode, addfunc, delfunc) {
+    constructor(listID, itemID, item, opcode, addfunc, delfunc, index = -1) {
         super();
         this.listID = listID;
 		this.itemID = itemID;
@@ -92,13 +115,14 @@ export class UpdateListItems_Transaction extends jsTPS_Transaction {
         this.addFunction = addfunc;
         this.deleteFunction = delfunc;
         this.opcode = opcode;
+        this.index = index
     }
     async doTransaction() {
 		let data;
         this.opcode === 0 ? { data } = await this.deleteFunction({
 							variables: {itemId: this.itemID, _id: this.listID}})
 						  : { data } = await this.addFunction({
-							variables: {item: this.item, _id: this.listID}})  
+							variables: {item: this.item, _id: this.listID, index: this.index}})  
 		if(this.opcode !== 0) {
             this.item._id = this.itemID = data.addItem;
 		}
@@ -110,7 +134,7 @@ export class UpdateListItems_Transaction extends jsTPS_Transaction {
         this.opcode === 1 ? { data } = await this.deleteFunction({
 							variables: {itemId: this.itemID, _id: this.listID}})
                           : { data } = await this.addFunction({
-							variables: {item: this.item, _id: this.listID}})
+							variables: {item: this.item, _id: this.listID, index: this.index}})
 		if(this.opcode !== 1) {
             this.item._id = this.itemID = data.addItem;
         }
@@ -118,6 +142,42 @@ export class UpdateListItems_Transaction extends jsTPS_Transaction {
     }
 }
 
+
+export class AlterCollection_Transaction extends jsTPS_Transaction {
+    constructor(listID, sortingParameter, oldList, callback, reversecallback){
+        super();
+        this.listID = listID;
+        this.field = sortingParameter;
+        this.oldList = oldList;
+        this.updateFunction = callback;
+        this.undoFunction = reversecallback;
+    }
+
+    async doTransaction() {
+        const data = await this.updateFunction({variables:{_id: this.listID, field: this.field}});
+        // this.oldList = await this.updateFunction({variables:{_id: this.listID, field: this.field}});
+        // console.log("HYPE");
+        // console.log(data);
+		return data;
+    }
+    async undoTransaction() {
+
+        const trimmedItems = this.oldList.map(x => {
+            const newItem = {
+                _id: x._id,
+                id: x.id,
+                description: x.description,
+                due_date: x.due_date,
+                assigned_to: x.assigned_to,
+                completed: x.completed
+            };
+            return newItem;
+        });
+
+		const {data} = await this.undoFunction({variables:{oldList: trimmedItems, listID: this.listID}});
+		return data;
+    }
+}
 
 
 

@@ -1,6 +1,7 @@
 const ObjectId = require('mongoose').Types.ObjectId;
 const Todolist = require('../models/todolist-model');
 
+
 // The underscore param, "_", is a wildcard that can represent any value;
 // here it is a stand-in for the parent parameter, which can be read about in
 // the Apollo Server documentation regarding resolvers
@@ -29,6 +30,7 @@ module.exports = {
 			if(todolist) return todolist;
 			else return ({});
 		},
+
 	},
 	Mutation: {
 		/** 
@@ -36,18 +38,23 @@ module.exports = {
 			@returns {string} the objectID of the item or an error message
 		**/
 		addItem: async(_, args) => {
-			const { _id, item } = args;
+			//Revision #2
+			const { _id, item , index } = args;
 			const listId = new ObjectId(_id);
 			const objectId = new ObjectId();
 			const found = await Todolist.findOne({_id: listId});
 			if(!found) return ('Todolist not found');
-			item._id = objectId;
+			if(item._id === '') item._id = objectId;
 			let listItems = found.items;
-			listItems.push(item);
+
+			//Revision #2
+			if(index < 0) listItems.push(item);
+  			else listItems.splice(index, 0, item);
 			
 			const updated = await Todolist.updateOne({_id: listId}, { items: listItems });
 
-			if(updated) return (objectId);
+			if(updated) return (item._id);
+
 			else return ('Could not add item');
 		},
 		/** 
@@ -114,6 +121,7 @@ module.exports = {
 			@returns {array} the updated item array on success, or the initial item array on failure
 		**/
 		updateItemField: async (_, args) => {
+			// console.log("YESSSSSSS");
 			const { _id, itemId, field,  flag } = args;
 			let { value } = args
 			const listId = new ObjectId(_id);
@@ -138,6 +146,7 @@ module.exports = {
 			@returns {array} the reordered item array on success, or initial ordering on failure
 		**/
 		reorderItems: async (_, args) => {
+			// console.log("SUCCESS");
 			const { _id, itemId, direction } = args;
 			const listId = new ObjectId(_id);
 			const found = await Todolist.findOne({_id: listId});
@@ -163,7 +172,134 @@ module.exports = {
 			listItems = found.items;
 			return (found.items);
 
+		},
+
+		//EXPERIMENT
+		sortItems: async (_, args) => {
+			const {_id, field} = args;
+			const listId = new ObjectId(_id);
+			const found = await Todolist.findOne({_id: listId});
+			const newList = [...found.items];
+			if(field=='default')
+				return newList;
+			else if(field=='description')
+				newList.sort((a,b) => a.description.localeCompare(b.description));
+			else if(field=='due_date')
+				newList.sort((a,b) => a.due_date.localeCompare(b.due_date));
+			else if(field=='completed')
+				newList.sort((a,b) => (a.completed==true ? 'c':'i').localeCompare((b.completed==true ? 'c':'i')));
+			else if(field=='assigned_to')
+				newList.sort((a,b) => a.assigned_to.localeCompare(b.assigned_to));
+			if(newList.toString()==found.items.toString())
+				newList.reverse();
+			
+			const updated = await Todolist.updateOne({_id: listId}, {items: newList});
+			// const experimentList = await Todolist.update({_id: listId}, {$unset:{"__typename":""}});
+			console.log("completed");
+			console.log(typeof(newList));
+			console.log(newList);
+			return newList;
+			// return experimentList;
+
+			/*const {_id, field} = args;
+			console.log("FIELD: " + field);
+			const listId = new ObjectId(_id);
+			// const found = await Todolist.findOne({_id: listId}).sort('description')
+			// const found = await (Todolist.findOne({_id: listId}))//.sort({description : 1});
+			const found = await (Todolist.findOne({_id: listId}));
+			console.log(found);
+			// return found.items;
+			console.log("FOUND ITEMS: ", found.items);
+
+			const newList = [...found.items]
+
+			for(let i = 0; i<newList.length; i++){
+				for(let j = i; j<newList.length; j++){
+					// console.log("COMPARING: " + (newList[i].description) + " VS " + (newList[j].description) +
+					// 	" " + (newList[i].description).localeCompare(newList[j].description))
+					if((newList[i].description).localeCompare(newList[j].description)>0){
+						var temp = newList[i];
+						newList[i]=newList[j];
+						newList[j]=temp;
+					}
+				}
+
+			}		
+
+			// console.log("CHECK: ", [...found.items].toString())
+			// console.log("NEW LIST: ", newList.toString())
+			console.log("EQUALITY: ", [...found.items].toString()==newList.toString())
+			if([...found.items].toString()==newList.toString()){
+				// console.log("REVERSING");
+				newList.reverse();
+			}
+
+			console.log("SORTED LIST: ", newList)
+
+			// console.log("LIST ID : " + listId);
+			// const updated = await Todolist.updateOne({_id: listId}, {items: newList});
+			// const result = await (Todolist.findOne({_id: listId}))
+			// console.log("RESULT: ", newList);
+			// console.log(updated);
+			console.log("boop");
+			return newList;*/
+
+		},
+
+		updateCollection: async (_, args) => {
+			const {items, _id} = args;
+			const listId = _id;
+			const newItems = items;
+			console.log("reached");
+			// const updated = await Todolist.replaceOne({_id: listId}, newItems)
+			// console.log("_ID: ", _id);
+			// const updated = await Todolist.updateOne({_id: listId}, {items: newList});
+			return true;
+			/*console.log("REACHED");
+			const {newList, _id} = args;
+			console.log("UPDATING COLLECTION ASASAS");
+			const updated = await Todolist.updateOne({_id: _id}, {items: newList});
+			if(updated)
+				return true;
+			return false;*/
+
+		},
+
+
+		revertCollection: async (_, args) => {
+			const {oldList, listID} = args;
+			console.log("reverted");
+			const listIDO = ObjectId(listID);
+			const found = await Todolist.findOne({_id: listIDO});
+			const updated = await found.updateOne({items: oldList});
+			console.log("OLD LIST ", oldList);
+			console.log("UPDATED LIST ", found);
+			if(updated)
+				return true;
+			return false;
 		}
 
 	}
 }
+			// found.sort({'description' : 1});
+			// listItems.sort('description');
+			// if(field=='description')
+			// 	listItems.sort(
+			// 		{description: 1}
+			// 	);
+			// else if(field=='due_date')
+			// 	listItems.sort((a,b) => a.due_date.localeCompare(b.due_date));
+			// else if(field=='completed')
+			// 	listItems.sort(
+			// 		'completed'
+			// 	);
+			// else if(field=='assigned_to')
+			// 	listItems.sort((a,b) => a.assigned_to.localeCompare(b.assigned_to));
+
+			// console.log("LIST:");
+			// newList.forEach((item)=> (console.log(item.description + " " + item.due_date + " " + item.completed)));
+			// console.log("___");
+			// console.log("Comparing list: ");
+			// found.items.forEach((item)=> (console.log(item.description + " " + item.due_date + " "  + item.completed)));
+
+			// console.log("EQUAL? " + newList==[...found.items]);

@@ -7,6 +7,9 @@ const TableEntry = (props) => {
     const completeStyle = data.completed ? ' complete-task' : ' incomplete-task';
     const assignedStyle = data.completed ? 'completed' : 'incomplete' ;
 
+    const upArrowStyle = data.id === props.activeList.items[0].id ? 'disabled-button' : 'enabled-button';
+    const downArrowStyle = data.id===props.activeList.items[props.activeList.items.length-1].id ? 'disabled-button' : 'enabled-button';
+
     const description = data.description;
     const due_date = data.due_date;
     const status = data.completed ? 'complete' : 'incomplete';
@@ -46,7 +49,7 @@ const TableEntry = (props) => {
 
     return (
         <WRow className='table-entry'>
-            <WCol size="4">
+            <WCol size="3">
                 {
                     editingDescr || description === ''
                         ? <WInput
@@ -108,14 +111,18 @@ const TableEntry = (props) => {
 
             <WCol size="2">
                 <div className='button-group'>
-                    <WButton className="table-entry-buttons" onClick={() => props.reorderItem(data._id, -1)} wType="texted">
+                    <WButton className="table-entry-buttons" className={upArrowStyle} onClick={() => 
+                        upArrowStyle==='disabled-button' ?
+                        null:props.reorderItem(data._id, -1)} wType="texted">
                         <i className="material-icons">expand_less</i>
                     </WButton>
-                    <WButton className="table-entry-buttons" onClick={() => props.reorderItem(data._id, 1)} wType="texted">
+                    <WButton className="table-entry-buttons" className={downArrowStyle} onClick={() => 
+                        downArrowStyle==='disabled-button' ?
+                        null:props.reorderItem(data._id, 1)} wType="texted">
                         <i className="material-icons">expand_more</i>
                     </WButton>
-                    <WButton className="table-entry-buttons" onClick={() => props.deleteItem(data)} wType="texted">
-                        <i className="material-icons">close</i>
+                    <WButton className="table-entry-buttons" onClick={() => props.deleteItem(data, props.index)} wType="texted">
+                        <i className="material-icons delete-button">close</i>
                     </WButton>
                 </div>
             </WCol>

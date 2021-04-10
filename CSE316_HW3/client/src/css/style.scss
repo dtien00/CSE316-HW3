@@ -239,3 +239,34 @@ html, body {
     background-color: $navbar-background-color;
     color:rgba(255,255,255, 0.7)
 }
+
+.enabled-button {
+    color:rgba(255,255,255, 0.7);
+    cursor: pointer;
+}
+
+.disabled-button {
+    color:rgba(0, 0, 0, 0.562);
+    cursor: default;
+}
+
+.enabled-button-undo-redo {
+    color:rgba(255,255,255, 0.7);
+    cursor: pointer;
+}
+
+.yellow-text{
+    color: var(--yellow-orange);
+    background: var(--deep-blue-lighter);
+    cursor: pointer;
+}
+
+.white-text{
+    color:var(--light-gray);
+    cursor: pointer;
+}
+
+.disabled{
+    background: var(--deep-blue-lighter);
+    color: var(--deep-blue-darker);
+}
